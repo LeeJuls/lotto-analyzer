@@ -567,8 +567,8 @@ function switchTab(tabId, btn) {
 
 // ===== Data Loading =====
 const CORS_PROXIES = [
-  (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
 ];
 const API_BASE = 'https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=';
 
@@ -578,7 +578,13 @@ async function fetchDraw(drwNo, proxyIndex = 0) {
   try {
     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    let data = await res.json();
+    
+    // allorigins get 방식인 경우 문자열을 다시 JSON 파싱
+    if (data.contents) {
+      data = JSON.parse(data.contents);
+    }
+
     if (data.returnValue === 'success') {
       return {
         draw: data.drwNo, date: data.drwNoDate,
