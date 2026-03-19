@@ -643,13 +643,29 @@ function loadData() {
 }
 
 function handleRefresh() {
+  const lastDrawDateStr = allDraws[allDraws.length - 1].date;
+  const parts = lastDrawDateStr.trim().split('.');
+  const y = parseInt(parts[0]);
+  const m = parseInt(parts[1]) - 1;
+  const d = parseInt(parts[2]);
+  
+  const nextDrawDate = new Date(y, m, d, 21, 0, 0); 
+  nextDrawDate.setDate(nextDrawDate.getDate() + 7);
+  
+  if (Date.now() < nextDrawDate.getTime()) {
+    const fmt = nextDrawDate.getFullYear() + "." + String(nextDrawDate.getMonth() + 1).padStart(2, '0') + "." + String(nextDrawDate.getDate()).padStart(2, '0');
+    alert("이미 최신 데이터로 갱신되었습니다.\n다음 추첨일(" + fmt + " 21:00) 이후에 갱신을 시도해주세요.");
+    return;
+  }
+
   const lastUpdate = localStorage.getItem('lotto_last_update');
   const now = Date.now();
   if (lastUpdate && now - parseInt(lastUpdate) < 24 * 60 * 60 * 1000) {
     const hoursLeft = Math.ceil((24 * 60 * 60 * 1000 - (now - parseInt(lastUpdate))) / (60 * 60 * 1000));
-    alert(`데이터 갱신은 하루에 한 번만 가능합니다.\n(약 ${hoursLeft}시간 후 다시 시도해주세요.)`);
+    alert(`데이터 갱신 시도는 하루에 한 번만 가능합니다.\n(약 ${hoursLeft}시간 후 다시 시도해주세요.)`);
     return;
   }
+  
   refreshData().then(() => {
     localStorage.setItem('lotto_last_update', Date.now());
   });
