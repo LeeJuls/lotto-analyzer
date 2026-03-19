@@ -408,7 +408,7 @@ canvas#freqChart { width: 100%; height: 400px; }
   <div class="status">
     <span>총 <span class="count" id="totalDraws">0</span>회차 데이터</span>
     <span> | 최신: <span class="count" id="latestDraw">-</span>회</span>
-    <span> | <button class="btn btn-secondary" style="padding:4px 12px; font-size:0.75rem;" onclick="refreshData()">데이터 갱신</button></span>
+    <span> | <button class="btn btn-secondary" style="padding:4px 12px; font-size:0.75rem;" onclick="handleRefresh()">데이터 갱신</button></span>
   </div>
 </header>
 
@@ -640,6 +640,19 @@ function loadData() {
   renderAll();
   // Try to fetch new draws in background (non-blocking, no error if fails)
   tryFetchNewDraws().catch(() => {});
+}
+
+function handleRefresh() {
+  const lastUpdate = localStorage.getItem('lotto_last_update');
+  const now = Date.now();
+  if (lastUpdate && now - parseInt(lastUpdate) < 24 * 60 * 60 * 1000) {
+    const hoursLeft = Math.ceil((24 * 60 * 60 * 1000 - (now - parseInt(lastUpdate))) / (60 * 60 * 1000));
+    alert(`데이터 갱신은 하루에 한 번만 가능합니다.\n(약 ${hoursLeft}시간 후 다시 시도해주세요.)`);
+    return;
+  }
+  refreshData().then(() => {
+    localStorage.setItem('lotto_last_update', Date.now());
+  });
 }
 
 async function refreshData() {
