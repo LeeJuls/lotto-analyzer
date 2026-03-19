@@ -80,7 +80,7 @@ def update_html():
     while True:
         draw_data = fetch_lotto_naver(current)
         if draw_data:
-            date_str = draw_data["date"].replace("-", ".")
+            date_str = str(draw_data["date"]).replace("-", ".")
             print(f"새로운 당첨 번호 발견: {current}회 ({date_str})")
             
             new_row = [

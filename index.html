@@ -408,7 +408,7 @@ canvas#freqChart { width: 100%; height: 400px; }
   <div class="status">
     <span>총 <span class="count" id="totalDraws">0</span>회차 데이터</span>
     <span> | 최신: <span class="count" id="latestDraw">-</span>회</span>
-    <span> | <button class="btn btn-secondary" style="padding:4px 12px; font-size:0.75rem;" onclick="alert('데이터가 브라우저에서 차단되었습니다.\n동기화를 위해 폴더 내의 python update_lotto.py 를 실행해주세요.')">데이터 갱신 안내</button></span>
+    <span> | <button class="btn btn-secondary" style="padding:4px 12px; font-size:0.75rem;" onclick="refreshData()">데이터 갱신</button></span>
   </div>
 </header>
 
@@ -570,31 +570,42 @@ const CORS_PROXIES = [
   (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
   (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
 ];
-const API_BASE = 'https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=';
 
-async function fetchDraw(drwNo, proxyIndex = 0) {
-  const url = API_BASE + drwNo;
-  const proxyUrl = CORS_PROXIES[proxyIndex](url);
+async function fetchDraw(drwNo) {
+  // 브라우저에서 사용할 수 있는 네이버 크롤링 (codetabs CORS 프록시 활용)
+  const query = encodeURIComponent(drwNo + "회로또");
+  const url = `https://api.codetabs.com/v1/proxy?quest=https://search.naver.com/search.naver?query=${query}`;
   try {
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    let data = await res.json();
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const htmlText = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, "text/html");
     
-    // allorigins get 방식인 경우 문자열을 다시 JSON 파싱
-    if (data.contents) {
-      data = JSON.parse(data.contents);
-    }
-
-    if (data.returnValue === 'success') {
-      return {
-        draw: data.drwNo, date: data.drwNoDate,
-        numbers: [data.drwtNo1,data.drwtNo2,data.drwtNo3,data.drwtNo4,data.drwtNo5,data.drwtNo6].sort((a,b)=>a-b),
-        bonus: data.bnusNo
-      };
-    }
-    return null;
+    // Check if the title matches the requested draw
+    const titleElem = doc.querySelector('a._text');
+    if (!titleElem) return null;
+    const match = titleElem.innerText.match(/(\d+)회차\s*\((.*?)\)/);
+    if (!match) return null;
+    if (parseInt(match[1]) !== drwNo) return null;
+    
+    const dateStr = match[2].replace(/\.$/, '');
+    
+    const ballElems = doc.querySelectorAll('span[class*="ball"]');
+    if (ballElems.length < 7) return null;
+    
+    const numbers = [
+      parseInt(ballElems[0].innerText),
+      parseInt(ballElems[1].innerText),
+      parseInt(ballElems[2].innerText),
+      parseInt(ballElems[3].innerText),
+      parseInt(ballElems[4].innerText),
+      parseInt(ballElems[5].innerText)
+    ].sort((a,b)=>a-b);
+    const bonus = parseInt(ballElems[6].innerText);
+    
+    return { draw: drwNo, date: dateStr, numbers, bonus };
   } catch (e) {
-    if (proxyIndex < CORS_PROXIES.length - 1) return fetchDraw(drwNo, proxyIndex + 1);
     return null;
   }
 }
