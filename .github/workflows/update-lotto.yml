@@ -1,0 +1,28 @@
+name: Weekly Lotto Data Update
+
+on:
+  schedule:
+    - cron: '30 13 * * 0'  # 매주 일요일 22:30 KST (UTC 13:30)
+  workflow_dispatch:         # 수동 실행
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install beautifulsoup4
+
+      - name: Run lotto updater
+        run: python update_lotto.py
+
+      - name: Commit and push if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "[GA] 로또 데이터 자동 갱신"
+          file_pattern: index.html
